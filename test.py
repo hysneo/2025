@@ -1,5 +1,3 @@
-pip install beautifulsoup4 lxml requests
-
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
@@ -15,21 +13,32 @@ st.title("⚾ KBO 팀 정보 조회")
 # 팀 선택
 team = st.selectbox("팀을 선택하세요:", teams)
 
-# 네이버 스포츠 KBO 순위 페이지
+# (예시) 네이버 스포츠에서 KBO 순위 크롤링
 url = "https://sports.news.naver.com/kbaseball/record/index"
 res = requests.get(url)
-soup = BeautifulSoup(res.text, "lxml")   # ✅ lxml 파서 권장
+soup = BeautifulSoup(res.text, "html.parser")
 
 # 순위표 가져오기
 table = soup.select_one("table")  
 df = pd.read_html(str(table))[0]
 
-# 선택한 팀 정보
+# 선택한 팀 정보 찾기
 team_info = df[df["팀명"] == team]
 
 if not team_info.empty:
     st.subheader(f"{team} 정보")
     승률 = team_info["승률"].values[0]
     st.write(f"📊 승률: {승률}")
-else:
-    st.write("팀 정보를 불러올 수 없습니다. 😢")
+
+# 최근 경기 결과 (예시: 네이버 스포츠 경기 결과 페이지)
+game_url = "https://sports.news.naver.com/kbaseball/schedule/index"
+res2 = requests.get(game_url)
+soup2 = BeautifulSoup(res2.text, "html.parser")
+
+# 경기 일정 크롤링 (단순 예시, 실제로는 경기 결과 페이지 구조 분석 필요)
+games = soup2.select("div.sch_result")[:5]
+recent_results = [g.text.strip() for g in games]
+
+st.subheader("📝 최근 경기 결과")
+for r in recent_results:
+    st.write(r)
