@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-# 팀 리스트 (Statiz 표기 기준)
 teams = ["LG", "KT", "SSG", "NC", "두산", "롯데", "KIA", "삼성", "한화", "키움"]
-
 st.title("⚾ KBO 팀 정보 조회 (Statiz 기반)")
 
 team = st.selectbox("팀을 선택하세요:", teams)
@@ -33,10 +31,16 @@ else:
 schedule_url = "https://www.statiz.co.kr/schedule.php?opt=1&sopt=0"
 schedules = pd.read_html(schedule_url)[0]
 
-# 최근 경기 데이터에서 선택한 팀 관련된 경기만 추출
-recent_games = schedules[schedules["팀"].str.contains(team, na=False)].head(5)
+# 날짜 컬럼을 datetime 형식으로 변환
+schedules["날짜"] = pd.to_datetime(schedules["날짜"], errors="coerce")
 
-st.subheader(f"📝 {team} 최근 경기 결과")
+# 선택한 팀 관련 경기만 추출
+team_games = schedules[schedules["팀"].str.contains(team, na=False)]
+
+# 날짜 기준으로 내림차순 정렬 -> 최신 경기 상위 5개
+recent_games = team_games.sort_values("날짜", ascending=False).head(5)
+
+st.subheader(f"📝 {team} 최신 5경기 결과")
 if not recent_games.empty:
     for _, game in recent_games.iterrows():
         with st.container():
@@ -57,7 +61,7 @@ if not recent_games.empty:
                 <div style='padding:10px; border-radius:12px; 
                             background-color:#f9f9f9; margin-bottom:10px;
                             box-shadow: 2px 2px 5px rgba(0,0,0,0.1);'>
-                    <b>{game['날짜']}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
+                    <b>{game['날짜'].date()}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
                     점수: <b>{score}</b>  
                     결과: {result_icon} {result}
                 </div>
