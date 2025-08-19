@@ -31,22 +31,27 @@ else:
 schedule_url = "https://www.statiz.co.kr/schedule.php?opt=1&sopt=0"
 schedules = pd.read_html(schedule_url)[0]
 
-# 날짜 컬럼을 datetime 형식으로 변환
-schedules["날짜"] = pd.to_datetime(schedules["날짜"], errors="coerce")
-
 # 선택한 팀 관련 경기만 추출
 team_games = schedules[schedules["팀"].str.contains(team, na=False)]
 
-# 날짜 기준으로 내림차순 정렬 -> 최신 경기 상위 5개
-recent_games = team_games.sort_values("날짜", ascending=False).head(5)
+# 날짜 컬럼이 있는지 확인
+if "날짜" in team_games.columns:
+    # datetime 변환, 변환 실패 시 그대로 두기
+    try:
+        team_games["날짜"] = pd.to_datetime(team_games["날짜"], errors="coerce")
+        recent_games = team_games.sort_values("날짜", ascending=False).head(5)
+    except:
+        recent_games = team_games.head(5)
+else:
+    recent_games = team_games.head(5)
 
-st.subheader(f"📝 {team} 최신 5경기 결과")
+st.subheader(f"📝 {team} 최근 경기 결과")
 if not recent_games.empty:
     for _, game in recent_games.iterrows():
         with st.container():
-            opponent = game["상대"]
-            score = f"{game['점수']} vs {game['실점']}"
-            result = game["결과"]
+            opponent = game.get("상대", "")
+            score = f"{game.get('점수','')} vs {game.get('실점','')}"
+            result = game.get("결과", "")
 
             # 결과에 따라 아이콘 표시
             if result == "승":
@@ -61,7 +66,7 @@ if not recent_games.empty:
                 <div style='padding:10px; border-radius:12px; 
                             background-color:#f9f9f9; margin-bottom:10px;
                             box-shadow: 2px 2px 5px rgba(0,0,0,0.1);'>
-                    <b>{game['날짜'].date()}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
+                    <b>{game.get('날짜','')}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
                     점수: <b>{score}</b>  
                     결과: {result_icon} {result}
                 </div>
