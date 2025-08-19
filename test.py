@@ -1,44 +1,68 @@
 import streamlit as st
-import requests
-from bs4 import BeautifulSoup
 import pandas as pd
 
-# KBO 팀 리스트
-teams = ["LG 트윈스", "KT 위즈", "SSG 랜더스", "NC 다이노스",
-         "두산 베어스", "롯데 자이언츠", "KIA 타이거즈",
-         "삼성 라이온즈", "한화 이글스", "키움 히어로즈"]
+# 팀 리스트 (Statiz 표기 기준)
+teams = ["LG", "KT", "SSG", "NC", "두산", "롯데", "KIA", "삼성", "한화", "키움"]
 
-st.title("⚾ KBO 팀 정보 조회")
+st.title("⚾ KBO 팀 정보 조회 (Statiz 기반)")
 
-# 팀 선택
 team = st.selectbox("팀을 선택하세요:", teams)
 
-# (예시) 네이버 스포츠에서 KBO 순위 크롤링
-url = "https://sports.news.naver.com/kbaseball/record/index"
-res = requests.get(url)
-soup = BeautifulSoup(res.text, "html.parser")
+# ---------------------------
+# 1) 순위표 가져오기
+# ---------------------------
+standings_url = "https://www.statiz.co.kr/standings.php"
+standings = pd.read_html(standings_url)[0]
 
-# 순위표 가져오기
-table = soup.select_one("table")  
-df = pd.read_html(str(table))[0]
-
-# 선택한 팀 정보 찾기
-team_info = df[df["팀명"] == team]
+team_info = standings[standings["팀"] == team]
 
 if not team_info.empty:
-    st.subheader(f"{team} 정보")
-    승률 = team_info["승률"].values[0]
-    st.write(f"📊 승률: {승률}")
+    st.subheader(f"{team} 순위 정보")
+    st.write(f"📊 승률: {team_info['승률'].values[0]}")
+    st.write(f"📈 순위: {team_info['순위'].values[0]}")
+    st.write(f"⚔️ 경기수: {team_info['경기'].values[0]}, "
+             f"승: {team_info['승'].values[0]}, "
+             f"패: {team_info['패'].values[0]}, "
+             f"무: {team_info['무'].values[0]}")
+else:
+    st.warning("순위 정보를 불러올 수 없습니다 😢")
 
-# 최근 경기 결과 (예시: 네이버 스포츠 경기 결과 페이지)
-game_url = "https://sports.news.naver.com/kbaseball/schedule/index"
-res2 = requests.get(game_url)
-soup2 = BeautifulSoup(res2.text, "html.parser")
+# ---------------------------
+# 2) 최근 경기 결과 가져오기
+# ---------------------------
+schedule_url = "https://www.statiz.co.kr/schedule.php?opt=1&sopt=0"
+schedules = pd.read_html(schedule_url)[0]
 
-# 경기 일정 크롤링 (단순 예시, 실제로는 경기 결과 페이지 구조 분석 필요)
-games = soup2.select("div.sch_result")[:5]
-recent_results = [g.text.strip() for g in games]
+# 최근 경기 데이터에서 선택한 팀 관련된 경기만 추출
+recent_games = schedules[schedules["팀"].str.contains(team, na=False)].head(5)
 
-st.subheader("📝 최근 경기 결과")
-for r in recent_results:
-    st.write(r)
+st.subheader(f"📝 {team} 최근 경기 결과")
+if not recent_games.empty:
+    for _, game in recent_games.iterrows():
+        with st.container():
+            opponent = game["상대"]
+            score = f"{game['점수']} vs {game['실점']}"
+            result = game["결과"]
+
+            # 결과에 따라 아이콘 표시
+            if result == "승":
+                result_icon = "✅"
+            elif result == "패":
+                result_icon = "❌"
+            else:
+                result_icon = "➖"
+
+            st.markdown(
+                f"""
+                <div style='padding:10px; border-radius:12px; 
+                            background-color:#f9f9f9; margin-bottom:10px;
+                            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);'>
+                    <b>{game['날짜']}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
+                    점수: <b>{score}</b>  
+                    결과: {result_icon} {result}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+else:
+    st.warning("최근 경기 결과를 불러올 수 없습니다 😢")
