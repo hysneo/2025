@@ -22,3 +22,15 @@ schedule = pd.read_html("https://www.statiz.co.kr/schedule.php?opt=1&sopt=0")[0]
 schedule.to_csv("schedule.csv", index=False)
 
 print("CSV 저장 완료!")
+
+import pandas as pd
+
+standings = pd.read_html("https://www.statiz.co.kr/standings.php")[0]
+standings.to_csv("standings.csv", index=False)
+
+schedule = pd.read_html("https://www.statiz.co.kr/schedule.php?opt=1&sopt=0")[0]
+schedule.to_csv("schedule.csv", index=False)
+
+standings = pd.read_csv("standings.csv")
+schedules = pd.read_csv("schedule.csv")
+
