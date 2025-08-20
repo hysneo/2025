@@ -1,60 +1,26 @@
 import streamlit as st
-import pandas as pd
-import requests
-from bs4 import BeautifulSoup
+import random
 
-st.set_page_config(page_title="KBO 팀 정보 조회", page_icon="⚾", layout="wide")
-st.title("⚾ KBO 팀 실시간 정보 조회")
+st.set_page_config(page_title="혈액형별 직업 추천", page_icon="💼")
+st.title("💼 혈액형별 직업 추천 앱")
 
-# -------------------------------------
-# 1. 실시간 KBO 순위 데이터 가져오기
-# -------------------------------------
-@st.cache_data
-def get_kbo_standings():
-    url = "https://www.statiz.co.kr/standings.php"
-    response = requests.get(url)
-    response.raise_for_status()
-    df_list = pd.read_html(response.text)
-    standings = df_list[0]
-    standings = standings[['팀', '경기', '승', '패', '무', '승률', '게임차']]
-    return standings
+# 혈액형별 추천 직업 리스트 (이모지 포함)
+jobs = {
+    "A": ["회계사 📊", "연구원 🔬", "공무원 🏛️", "교사 👩‍🏫", "사서 📚", "간호사 🏥"],
+    "B": ["디자이너 🎨", "프리랜서 💻", "마케터 📢", "작가 ✍️", "유튜버 📹", "음악가 🎵"],
+    "O": ["경영자 🏢", "영업사원 🤝", "운동선수 🏅", "파일럿 ✈️", "모험가 🧗‍♂️", "탐험가 🌍"],
+    "AB": ["의사 🩺", "엔지니어 ⚙️", "과학자 🧪", "예술가 🎭", "디렉터 🎬", "심리학자 🧠"]
+}
 
-# -------------------------------------
-# 2. 실시간 KBO 경기 일정 및 결과 데이터
-# -------------------------------------
-@st.cache_data
-def get_kbo_schedule():
-    url = "https://www.statiz.co.kr/schedule.php?opt=1&sopt=0"
-    response = requests.get(url)
-    response.raise_for_status()
-    df_list = pd.read_html(response.text)
-    schedules = df_list[0]
-    schedules = schedules[['날짜', '구장', '홈', '원정', '스코어', '비고']]
-    return schedules
+# 혈액형 선택
+blood_type = st.selectbox("혈액형을 선택하세요:", ["A", "B", "O", "AB"])
 
-# 데이터 불러오기
-try:
-    standings = get_kbo_standings()
-    schedules = get_kbo_schedule()
-except Exception as e:
-    st.error("⚠️ 데이터를 불러오는데 문제가 발생했습니다. 다시 시도해주세요.")
-    st.stop()
+# 추천 갯수 선택
+num_jobs = st.slider("추천할 직업 갯수 선택:", 1, 5, 3)
 
-# -------------------------------------
-# 3. Streamlit 인터페이스 구성
-# -------------------------------------
-st.subheader("📌 팀 선택")
-teams = standings["팀"].tolist()
-team = st.selectbox("팀을 선택하세요:", teams)
-
-# 팀 순위 정보 표시
-st.subheader(f"🏆 {team} 순위 정보")
-team_info = standings[standings["팀"] == team]
-st.dataframe(team_info)
-
-# 최근 5경기 표시
-st.subheader(f"📅 {team} 최근 5경기 결과")
-recent_games = schedules[(schedules["홈"] == team) | (schedules["원정"] == team)].head(5)
-st.dataframe(recent_games)
-
-st.caption("데이터 출처: Statiz (https://www.statiz.co.kr)")
+# 추천 버튼
+if st.button("직업 추천받기"):
+    recommended = random.sample(jobs[blood_type], k=num_jobs)
+    st.subheader(f"💡 {blood_type}형에게 추천하는 직업 {num_jobs}개:")
+    for idx, job in enumerate(recommended, 1):
+        st.write(f"{idx}. {job}")
