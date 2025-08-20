@@ -1,98 +1,60 @@
 import streamlit as st
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
-teams = ["LG", "KT", "SSG", "NC", "두산", "롯데", "KIA", "삼성", "한화", "키움"]
-st.title("⚾ KBO 팀 정보 조회 (CSV 기반)")
+st.set_page_config(page_title="KBO 팀 정보 조회", page_icon="⚾", layout="wide")
+st.title("⚾ KBO 팀 실시간 정보 조회")
 
-team = st.selectbox("팀을 선택하세요:", teams)
+# -------------------------------------
+# 1. 실시간 KBO 순위 데이터 가져오기
+# -------------------------------------
+@st.cache_data
+def get_kbo_standings():
+    url = "https://www.statiz.co.kr/standings.php"
+    response = requests.get(url)
+    response.raise_for_status()
+    df_list = pd.read_html(response.text)
+    standings = df_list[0]
+    standings = standings[['팀', '경기', '승', '패', '무', '승률', '게임차']]
+    return standings
 
-# ---------------------------
-# 1) 순위표 가져오기 (CSV)
-# ---------------------------
-standings = pd.read_csv("standings.csv")
-team_info = standings[standings["팀"] == team]
+# -------------------------------------
+# 2. 실시간 KBO 경기 일정 및 결과 데이터
+# -------------------------------------
+@st.cache_data
+def get_kbo_schedule():
+    url = "https://www.statiz.co.kr/schedule.php?opt=1&sopt=0"
+    response = requests.get(url)
+    response.raise_for_status()
+    df_list = pd.read_html(response.text)
+    schedules = df_list[0]
+    schedules = schedules[['날짜', '구장', '홈', '원정', '스코어', '비고']]
+    return schedules
 
-if not team_info.empty:
-    st.subheader(f"{team} 순위 정보")
-    st.write(f"📊 승률: {team_info['승률'].values[0]}")
-    st.write(f"📈 순위: {team_info['순위'].values[0]}")
-    st.write(f"⚔️ 경기수: {team_info['경기'].values[0]}, "
-             f"승: {team_info['승'].values[0]}, "
-             f"패: {team_info['패'].values[0]}, "
-             f"무: {team_info['무'].values[0]}")
-else:
-    st.warning("순위 정보를 불러올 수 없습니다 😢")
+# 데이터 불러오기
+try:
+    standings = get_kbo_standings()
+    schedules = get_kbo_schedule()
+except Exception as e:
+    st.error("⚠️ 데이터를 불러오는데 문제가 발생했습니다. 다시 시도해주세요.")
+    st.stop()
 
-# ---------------------------
-# 2) 최근 경기 결과 가져오기 (CSV)
-# ---------------------------
-schedules = pd.read_csv("schedule.csv")
-
-# 날짜 컬럼 처리
-if "날짜" in schedules.columns:
-    try:
-        schedules["날짜"] = pd.to_datetime(schedules["날짜"], errors="coerce")
-    except:
-        pass
-
-# 선택한 팀 경기만 추출 후 최신 5경기
-team_games = schedules[schedules["팀"].str.contains(team, na=False)]
-if "날짜" in team_games.columns:
-    recent_games = team_games.sort_values("날짜", ascending=False).head(5)
-else:
-    recent_games = team_games.head(5)
-
-st.subheader(f"📝 {team} 최신 5경기 결과")
-if not recent_games.empty:
-    for _, game in recent_games.iterrows():
-        with st.container():
-            opponent = game.get("상대", "")
-            score = f"{game.get('점수','')} vs {game.get('실점','')}"
-            result = game.get("결과", "")
-
-            if result == "승":
-                result_icon = "✅"
-                bg_color = "#d4edda"  # 연두
-            elif result == "패":
-                result_icon = "❌"
-                bg_color = "#f8d7da"  # 연분홍
-            else:
-                result_icon = "➖"
-                bg_color = "#f9f9f9"  # 회색
-
-            st.markdown(
-                f"""
-                <div style='padding:10px; border-radius:12px; 
-                            background-color:{bg_color}; margin-bottom:10px;
-                            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);'>
-                    <b>{game.get('날짜','')}</b> | ⚾ <b>{team}</b> vs <b>{opponent}</b>  
-                    점수: <b>{score}</b>  
-                    결과: {result_icon} {result}
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-else:
-    st.warning("최근 경기 결과를 불러올 수 없습니다 😢")
-
-import streamlit as st
-import pandas as pd
-
-st.title("⚾ KBO 팀 정보 조회")
-
-# CSV 파일 읽기
-standings = pd.read_csv("standings.csv")
-schedules = pd.read_csv("schedule.csv")
-
-# 팀 선택
+# -------------------------------------
+# 3. Streamlit 인터페이스 구성
+# -------------------------------------
+st.subheader("📌 팀 선택")
 teams = standings["팀"].tolist()
 team = st.selectbox("팀을 선택하세요:", teams)
 
-# 팀 정보 보여주기
+# 팀 순위 정보 표시
+st.subheader(f"🏆 {team} 순위 정보")
 team_info = standings[standings["팀"] == team]
-st.write(team_info)
+st.dataframe(team_info)
 
-# 최근 경기 5경기 보여주기
-recent_games = schedules[schedules["홈"] == team].head(5)
-st.write(recent_games)
+# 최근 5경기 표시
+st.subheader(f"📅 {team} 최근 5경기 결과")
+recent_games = schedules[(schedules["홈"] == team) | (schedules["원정"] == team)].head(5)
+st.dataframe(recent_games)
 
+st.caption("데이터 출처: Statiz (https://www.statiz.co.kr)")
