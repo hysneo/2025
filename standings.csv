@@ -1,1 +1,3 @@
+standings = pd.read_csv("standings.csv")
+schedules = pd.read_csv("schedule.csv")
 
