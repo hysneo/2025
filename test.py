@@ -74,3 +74,25 @@ if not recent_games.empty:
             )
 else:
     st.warning("최근 경기 결과를 불러올 수 없습니다 😢")
+
+import streamlit as st
+import pandas as pd
+
+st.title("⚾ KBO 팀 정보 조회")
+
+# CSV 파일 읽기
+standings = pd.read_csv("standings.csv")
+schedules = pd.read_csv("schedule.csv")
+
+# 팀 선택
+teams = standings["팀"].tolist()
+team = st.selectbox("팀을 선택하세요:", teams)
+
+# 팀 정보 보여주기
+team_info = standings[standings["팀"] == team]
+st.write(team_info)
+
+# 최근 경기 5경기 보여주기
+recent_games = schedules[schedules["홈"] == team].head(5)
+st.write(recent_games)
+
